@@ -6,7 +6,7 @@ import (
 	"github.com/Kasita-Inc/gadget/errors"
 )
 
-// TimeoutError is returned when an operation on the connection occurs.
+// TimeoutError is returned when an operation on the connection times out.
 type TimeoutError struct {
 	Operation string
 	Bytes     int

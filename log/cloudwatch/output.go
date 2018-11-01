@@ -203,7 +203,7 @@ func (cwa *administration) GetLogStream(group *cloudwatchlogs.LogGroup, streamNa
 	if nil != err {
 		return nil, errors.Wrap(err)
 	}
-	// add the reference to our map
+	// add the reference to the map
 	cwa.Lock()
 	cwa.logStreams[streamKey] = stream
 	cwa.Unlock()
@@ -256,7 +256,7 @@ func (task *logOutputTask) Execute() error {
 	return task.output.SendEvents()
 }
 
-// output is a wrapper for a log stream that we can attach our interface methods to.
+// output is a wrapper for a log stream that we can attach the interface methods to.
 type output struct {
 	sync.Mutex
 	name     string
@@ -310,7 +310,7 @@ func (o *output) SendEvents() error {
 		o.stream = o.stream.SetUploadSequenceToken(*resp.NextSequenceToken)
 	}
 	if err, ok := err.(awserr.Error); !ok || err.Code() != cloudwatchlogs.ErrCodeInvalidSequenceTokenException {
-		// our sequence token got out of data so refresh it
+		// the sequence token got out of data so refresh it
 		o.admin.UpdateLogStream(*o.group.LogGroupName, *o.stream.LogStreamName)
 		// don't log this error
 		err = nil

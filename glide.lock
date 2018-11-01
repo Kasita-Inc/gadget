@@ -1,5 +1,5 @@
 hash: 5f8e1605c3f2e7855082b9e6daabd277e7d2f66c86c527c7ee00278d35e5c238
-updated: 2018-11-01T15:30:42.461979-05:00
+updated: 2018-11-01T16:59:48.481978-05:00
 imports:
 - name: github.com/aws/aws-sdk-go
   version: 870fa4307c5f57c14153c695df7b87af1acdcbf1
@@ -43,7 +43,7 @@ imports:
   - service/s3/s3manager
   - service/sts
 - name: github.com/docker/go-units
-  version: 47565b4f722fb6ceae66b95f853feed578a4a51c
+  version: 2fb04c6466a548a03cb009c5569ee1ab1e35398e
 - name: github.com/go-redis/redis
   version: b3d9bf10f6666b2ee5100a6f3f84f4caf3b4e37d
   subpackages:
