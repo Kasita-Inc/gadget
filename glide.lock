@@ -1,0 +1,104 @@
+hash: 5f8e1605c3f2e7855082b9e6daabd277e7d2f66c86c527c7ee00278d35e5c238
+updated: 2018-11-01T15:30:42.461979-05:00
+imports:
+- name: github.com/aws/aws-sdk-go
+  version: 870fa4307c5f57c14153c695df7b87af1acdcbf1
+  subpackages:
+  - aws
+  - aws/awserr
+  - aws/awsutil
+  - aws/client
+  - aws/client/metadata
+  - aws/corehandlers
+  - aws/credentials
+  - aws/credentials/ec2rolecreds
+  - aws/credentials/endpointcreds
+  - aws/credentials/stscreds
+  - aws/csm
+  - aws/defaults
+  - aws/ec2metadata
+  - aws/endpoints
+  - aws/request
+  - aws/session
+  - aws/signer/v4
+  - internal/ini
+  - internal/s3err
+  - internal/sdkio
+  - internal/sdkrand
+  - internal/sdkuri
+  - internal/shareddefaults
+  - private/protocol
+  - private/protocol/eventstream
+  - private/protocol/eventstream/eventstreamapi
+  - private/protocol/json/jsonutil
+  - private/protocol/jsonrpc
+  - private/protocol/query
+  - private/protocol/query/queryutil
+  - private/protocol/rest
+  - private/protocol/restxml
+  - private/protocol/xml/xmlutil
+  - service/cloudwatchlogs
+  - service/s3
+  - service/s3/s3iface
+  - service/s3/s3manager
+  - service/sts
+- name: github.com/docker/go-units
+  version: 47565b4f722fb6ceae66b95f853feed578a4a51c
+- name: github.com/go-redis/redis
+  version: b3d9bf10f6666b2ee5100a6f3f84f4caf3b4e37d
+  subpackages:
+  - internal
+  - internal/consistenthash
+  - internal/hashtag
+  - internal/pool
+  - internal/proto
+  - internal/singleflight
+  - internal/util
+- name: github.com/go-sql-driver/mysql
+  version: d523deb1b23d913de5bdada721a6071e71283618
+- name: github.com/go-stack/stack
+  version: 2fee6af1a9795aafbe0253a0cfbdf668e1fb8a9a
+- name: github.com/golang/protobuf
+  version: aa810b61a9c79d51363740d207bb46cf8e620ed5
+  subpackages:
+  - proto
+  - ptypes
+  - ptypes/any
+  - ptypes/duration
+  - ptypes/timestamp
+- name: github.com/google/uuid
+  version: d460ce9f8df2e77fb1ba55ca87fafed96c607494
+- name: github.com/jmespath/go-jmespath
+  version: c2b33e8439af944379acbdd9c3a5fe0bc44bd8a5
+- name: github.com/jmoiron/sqlx
+  version: d161d7a76b5661016ad0b085869f77fd410f3e6a
+  subpackages:
+  - reflectx
+- name: github.com/mattes/migrate
+  version: 035c07716cd373d88456ec4d701402df52584cb4
+  subpackages:
+  - database
+  - database/mysql
+  - source
+  - source/file
+- name: github.com/samalba/dockerclient
+  version: a3036261847103270e9f732509f43b5f98710ace
+- name: google.golang.org/appengine
+  version: 4a4468ece617fc8205e99368fa2200e9d1fad421
+  subpackages:
+  - cloudsql
+- name: gopkg.in/yaml.v2
+  version: 5420a8b6744d3b0345ab293f6fcba19c978f1183
+testImports:
+- name: github.com/davecgh/go-spew
+  version: d8f796af33cc11cb798c1aaeb27a4ebc5099927d
+  subpackages:
+  - spew
+- name: github.com/pmezard/go-difflib
+  version: 792786c7400a136282c1664665ae0a8db921c6c2
+  subpackages:
+  - difflib
+- name: github.com/stretchr/testify
+  version: f35b8ab0b5a2cef36673838d662e249dd9c94686
+  subpackages:
+  - assert
