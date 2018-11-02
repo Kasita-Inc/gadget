@@ -7,7 +7,16 @@ jobs:
     docker:
       # specify the version
       - image: circleci/golang:1.11.1
-
+        environment:
+          MOD_TEST_DATABASE_URL: gadget_test:gadget_test@tcp(localhost:3306)/gadget_test?parseTime=true&charset=utf8mb4
+      - image: mysql:5.7
+        command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_bin --innodb-large-prefix=true --innodb-file-format=Barracuda
+        environment:
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+          MYSQL_ROOT_PASSWORD: ''
+          MYSQL_DATABASE: gadget_test
+          MYSQL_USER: gadget_test
+          MYSQL_PASSWORD: gadget_test
     working_directory: /go/src/github.com/Kasita-Inc/gadget
     steps:
       - checkout
