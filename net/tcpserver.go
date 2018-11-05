@@ -12,7 +12,7 @@ import (
 
 // Sensible Defaults
 const (
-	DefaultMinWorkers    = 20
+	DefaultMinWorkers    = 300
 	DefaultBufferedTasks = 10000
 	DefaultIdleTimeout   = 24 * time.Hour
 )

@@ -1,7 +1,6 @@
 package dispatcher
 
 import (
-	"context"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -22,8 +21,6 @@ func (task *dummy) Execute() error {
 // Worker is used internally by the dispatched to execute tasks in ready
 // go routines
 type Worker interface {
-	// SetDefaultTimeout for tasks that do not define their own timeout
-	SetDefaultTimeout(time.Duration)
 	// Exec the passed message asynchronously
 	Exec(Task) bool
 	// Run this worker so that it will perform work
@@ -46,9 +43,6 @@ type worker struct {
 	exit chan bool
 	// the channel used to signal that this worker has exited it's main loop
 	exited chan bool
-	// defaultTimeout is the timeout for tasks that do not define their own
-	// timeout.
-	defaultTimeout time.Duration
 	// channel where we put completed tasks.
 	complete chan<- Task
 }
@@ -56,16 +50,11 @@ type worker struct {
 // NewWorker for the passed worker pool.
 func NewWorker(pool chan Worker, complete chan<- Task) Worker {
 	worker := &worker{
-		pool:           pool,
-		running:        0,
-		defaultTimeout: DefaultTaskTimeout,
-		complete:       complete,
+		pool:     pool,
+		running:  0,
+		complete: complete,
 	}
 	return worker
-}
-
-func (w *worker) SetDefaultTimeout(timeout time.Duration) {
-	w.defaultTimeout = timeout
 }
 
 func (w *worker) Running() bool {
@@ -109,7 +98,8 @@ func (w *worker) run(loaded chan bool) {
 		// never succeed
 		select {
 		case task := <-w.tasks:
-			w.execTask(task)
+			log.Error(task.Execute())
+			w.completeTask(task)
 			if exit {
 				w.exited <- true
 				return
@@ -119,29 +109,6 @@ func (w *worker) run(loaded chan bool) {
 			// a task in our channel
 			exit = true
 		}
-	}
-}
-
-func (w *worker) execTask(task Task) {
-	// check for a timeout task
-	timeout := w.defaultTimeout
-	ttask, ok := task.(TimeoutTask)
-	if ok {
-		timeout = ttask.GetTimeout()
-	}
-	// we are not using the cancel channel
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	go func(done func()) {
-		log.Error(task.Execute())
-		done()
-	}(cancel)
-	select {
-	// ctx.Done() yields after cancel is called or the ctx times out
-	case <-ctx.Done():
-		if ctx.Err() == context.DeadlineExceeded {
-			log.Warnf("task %+v timed out after %s", task, timeout)
-		}
-		w.completeTask(task)
 	}
 }
 

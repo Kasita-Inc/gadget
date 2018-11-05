@@ -30,25 +30,3 @@ func (rt *retryTask) Execute() error {
 	}
 	return nil
 }
-
-// TimeoutTask that will fail after the specified duration has elapsed after execute
-// is called on the task.
-type TimeoutTask interface {
-	Task
-	GetTimeout() time.Duration
-}
-
-// NewTimeoutTask that will fail after the specified duration has elapsed after execute
-// is called on the task.
-func NewTimeoutTask(task Task, timeout time.Duration) TimeoutTask {
-	return &timeoutTask{Task: task, timeout: timeout}
-}
-
-type timeoutTask struct {
-	Task
-	timeout time.Duration
-}
-
-func (task *timeoutTask) GetTimeout() time.Duration {
-	return task.timeout
-}

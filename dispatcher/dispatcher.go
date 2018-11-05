@@ -26,8 +26,9 @@ const (
 	// Stopped indicates that the Dispatcher is not currently executing tasks.
 	Stopped Status = 0
 	// DefaultWaitBetweenScaleDowns is the time duration to wait between
-	// attempts to scale down the worker pool
-	DefaultWaitBetweenScaleDowns = 1 * time.Minute
+	// attempts to scale down the worker pool. You do not want this to be too small
+	// or a lot of time will be wasted scaling up and down.
+	DefaultWaitBetweenScaleDowns = 5 * time.Minute
 	// DefaultDispatchMissesBeforeDraining is the number of times the system
 	// must fail to dispatch a message from the task channel prior to considering the
 	// system fully drained
@@ -256,7 +257,7 @@ func (d *dispatcher) run() {
 		case <-ticker.Channel():
 			// scale down if we have no overflow queue, we are not at our minimum number of workers
 			// and it has been over a second since the last time we dispatched a message
-			if d.overflow.Size() == 0 && len(d.workers) != d.minWorkers && time.Since(lastDispatch) > time.Second {
+			if d.overflow.Size() == 0 && len(d.workers) != d.minWorkers && time.Since(lastDispatch) > d.waitBetweenScaleDowns {
 				log.Infof("dispatcher status: %d workers %d overflow", len(d.workers), d.overflow.Size())
 				d.Resize(len(d.workers)/2, true)
 			}
