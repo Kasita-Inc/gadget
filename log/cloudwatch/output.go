@@ -5,6 +5,9 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"time"
+
+	"github.com/Kasita-Inc/gadget/timeutil"
 
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -16,6 +19,13 @@ import (
 	"github.com/Kasita-Inc/gadget/stringutil"
 )
 
+// 1 mebibyte is the actual max, but pad with a tenth so we don't have to be
+// exact when calculating message size (int(1048576 * 0.9))
+const (
+	defaultSendWait         = 30 * time.Second
+	maxPayloadSizeBytes int = 943718
+)
+
 func newSession() (*session.Session, errors.TracerError) {
 	session, err := session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
@@ -25,6 +35,7 @@ func newSession() (*session.Session, errors.TracerError) {
 
 type administration struct {
 	sync.Mutex
+	sendWait   time.Duration
 	dispatcher dispatcher.Dispatcher
 	cwlogs     *cloudwatchlogs.CloudWatchLogs
 	logGroups  map[string]*cloudwatchlogs.LogGroup
@@ -43,14 +54,12 @@ var admin = &administration{
 // Administration provides a layer that manages the control of cloud watch logs to behave
 // like a standard log output.
 type Administration interface {
+	// GetOutput for the specified group and output name.
 	GetOutput(groupName, outputName string, logLevel log.LevelFlag) (log.Output, errors.TracerError)
 }
 
 // GetAdministration for cloud watch logs
-func GetAdministration(dispatcher dispatcher.Dispatcher) (Administration, errors.TracerError) {
-	if nil == admin.dispatcher {
-		admin.dispatcher = dispatcher
-	}
+func GetAdministration() (Administration, errors.TracerError) {
 	if nil != admin.cwlogs {
 		return admin, nil
 	}
@@ -63,6 +72,16 @@ func GetAdministration(dispatcher dispatcher.Dispatcher) (Administration, errors
 	err = admin.UpdateLogGroups()
 	log.Error(err)
 	return admin, errors.Wrap(err)
+}
+
+func (cwa *administration) Run() {
+	cwa.Lock()
+	defer cwa.Unlock()
+	timeutil.RunEvery(func() {
+		for _, output := range cwa.outputs {
+			output.SendEvents()
+		}
+	}, cwa.sendWait)
 }
 
 func createStreamKey(groupName, streamName string) string {
@@ -134,6 +153,7 @@ func (cwa *administration) GetOutput(groupName, streamName string, logLevel log.
 			stream:   stream,
 			logLevel: logLevel,
 			admin:    cwa,
+			buffer:   NewEventQueue(),
 		}
 	}
 	return logOutput, errors.Wrap(err)
@@ -203,7 +223,7 @@ func (cwa *administration) GetLogStream(group *cloudwatchlogs.LogGroup, streamNa
 	if nil != err {
 		return nil, errors.Wrap(err)
 	}
-	// add the reference to the map
+	// add the reference to our map
 	cwa.Lock()
 	cwa.logStreams[streamKey] = stream
 	cwa.Unlock()
@@ -248,15 +268,7 @@ func (cwa *administration) FindLogStream(groupName, streamName string) (*cloudwa
 	return nil, errors.New("failed to locate log stream '%s' in log group '%s'", streamName, groupName)
 }
 
-type logOutputTask struct {
-	output *output
-}
-
-func (task *logOutputTask) Execute() error {
-	return task.output.SendEvents()
-}
-
-// output is a wrapper for a log stream that we can attach the interface methods to.
+// output is a wrapper for a log stream that we can attach our interface methods to.
 type output struct {
 	sync.Mutex
 	name     string
@@ -264,7 +276,7 @@ type output struct {
 	logLevel log.LevelFlag
 	group    *cloudwatchlogs.LogGroup
 	stream   *cloudwatchlogs.LogStream
-	buffer   []*cloudwatchlogs.InputLogEvent
+	buffer   EventQueue
 	// token is unique to the stream and must be set to sequence the events correctly
 	token *string
 }
@@ -277,30 +289,39 @@ func (o *output) Log(message log.Message) {
 	o.Lock()
 	defer o.Unlock()
 	payload := message.JSONString()
+	// they want milliseconds since epoch and our timestamps are in seconds.
 	ts := message.TimestampUnix * 1000
-	event := &cloudwatchlogs.InputLogEvent{
-		Message: &payload,
-		// they want milliseconds since epoch not seconds apparently.
+	o.buffer.Push(&cloudwatchlogs.InputLogEvent{
+		Message:   &payload,
 		Timestamp: &ts,
-	}
-	if nil == o.buffer {
-		o.buffer = []*cloudwatchlogs.InputLogEvent{event}
-	} else {
-		o.buffer = append(o.buffer, event)
-	}
-	if len(o.buffer) == 1 || len(o.buffer)%5 == 0 {
-		o.admin.dispatcher.Dispatch(&logOutputTask{output: o})
-	}
+	})
 }
 
 func (o *output) SendEvents() error {
 	o.Lock()
 	defer o.Unlock()
-	if len(o.buffer) == 0 {
+	if o.buffer.Size() == 0 {
+		return nil
+	}
+	events := make([]*cloudwatchlogs.InputLogEvent, 0)
+	sizeBytes := 0
+	for o.buffer.Size() > 0 {
+		event, err := o.buffer.Peek()
+		if nil != err {
+			break
+		}
+		if sizeBytes+len([]byte(*event.Message)) > maxPayloadSizeBytes {
+			break
+		}
+		// actually pop it now
+		o.buffer.Pop()
+		events = append(events, event)
+	}
+	if len(events) == 0 {
 		return nil
 	}
 	input := &cloudwatchlogs.PutLogEventsInput{
-		LogEvents:     o.buffer,
+		LogEvents:     events,
 		LogGroupName:  o.group.LogGroupName,
 		LogStreamName: o.stream.LogStreamName,
 		SequenceToken: o.stream.UploadSequenceToken,
@@ -309,15 +330,17 @@ func (o *output) SendEvents() error {
 	if err == nil {
 		o.stream = o.stream.SetUploadSequenceToken(*resp.NextSequenceToken)
 	}
-	if err, ok := err.(awserr.Error); !ok || err.Code() != cloudwatchlogs.ErrCodeInvalidSequenceTokenException {
-		// the sequence token got out of data so refresh it
+	if awsErr, ok := err.(awserr.Error); !ok || awsErr.Code() != cloudwatchlogs.ErrCodeInvalidSequenceTokenException {
+		// our sequence token got out of data so refresh it
 		o.admin.UpdateLogStream(*o.group.LogGroupName, *o.stream.LogStreamName)
 		// don't log this error
 		err = nil
 	} else if nil != err {
 		log.Error(err)
-	} else {
-		o.buffer = make([]*cloudwatchlogs.InputLogEvent, 0, 0)
+	}
+	// if we still have events run again
+	if o.buffer.Size() > 0 && nil == err {
+		return o.SendEvents()
 	}
 	return err
 }

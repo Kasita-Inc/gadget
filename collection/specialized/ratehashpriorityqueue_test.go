@@ -21,7 +21,7 @@ func TestRateHashPriorityQueue_Size(t *testing.T) {
 	q.Push(NewMockHashPriority(3, generator.String(20)))
 	assert.Equal(2, q.Size())
 	q.Pop()
-	// assert.Equal(1, q.Size())
+	assert.Equal(1, q.Size())
 }
 
 func TestRateHashPriorityQueue_Peek(t *testing.T) {
@@ -70,16 +70,17 @@ func TestRateHashPriorityQueue_Channel(t *testing.T) {
 func TestRateHashPriorityQueue_Pop(t *testing.T) {
 	assert := assert.New(t)
 	// we have to get all the elements in before this time elapses once
-	q := NewRateHashPriorityQueue(1, 50*time.Millisecond)
+	q := NewRateHashPriorityQueue(1, 55*time.Millisecond)
 	for i := 0; i < 10; i++ {
 		q.Push(NewMockHashPriority(i, generator.String(20)))
 	}
 	for j := 9; j >= 0; j-- {
 		start := time.Now()
 		elm, ok := q.Pop()
-		assert.InDelta(50*time.Millisecond, time.Now().Sub(start), float64(time.Millisecond))
-		assert.True(time.Now().Sub(start) > time.Millisecond)
 		assert.True(ok)
+		// we want to make sure we waited at least 50ms. Don't make this dead on
+		// with the rate limit as the timers are not millisecond accurate.
+		assert.True(time.Now().Sub(start) > 50*time.Millisecond)
 		assert.Equal(j, elm.GetPriority())
 	}
 }

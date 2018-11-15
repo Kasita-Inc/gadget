@@ -1,6 +1,6 @@
 package collection
 
-// Stack is an implementation of a stack datastructure
+// Stack is an implementation of a stack (filo/lifo) datastructure
 type Stack interface {
 	// Size of the stack represented as a count of the elements in the stack.
 	Size() int
