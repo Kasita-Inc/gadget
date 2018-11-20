@@ -6,7 +6,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/Kasita-Inc/gadget/dispatcher"
 	"github.com/Kasita-Inc/gadget/log"
 )
 
@@ -87,9 +86,7 @@ func Test_Skip(t *testing.T) {
 	// into cloudwatch.
 	t.SkipNow()
 	assert := assert.New(t)
-	dispatcher := dispatcher.NewDispatcher(10, 1, 10)
-	dispatcher.Run()
-	admin, err := GetAdministration(dispatcher)
+	admin, err := GetAdministration()
 	if !assert.NoError(err) {
 		return
 	}
@@ -104,6 +101,5 @@ func Test_Skip(t *testing.T) {
 	message = log.Message{Message: "some riot text", TimestampUnix: time.Now().UTC().Unix()}
 	output.Log(message)
 	time.Sleep(1)
-	dispatcher.Quit(true)
 	assert.Fail("adsf")
 }

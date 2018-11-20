@@ -5,8 +5,9 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/Kasita-Inc/gadget/generator"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/Kasita-Inc/gadget/generator"
 )
 
 func TestValidateIPv4Address(t *testing.T) {
