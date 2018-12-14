@@ -11,3 +11,6 @@ get: setup
 
 test: get
 	go test -cover -p 1 ./...
+
+build: get
+	go build ./...

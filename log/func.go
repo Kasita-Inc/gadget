@@ -3,6 +3,8 @@ package log
 import (
 	"os"
 	"strconv"
+
+	"github.com/fatih/color"
 )
 
 const (
@@ -51,4 +53,14 @@ func DefaultOutput(m Message) {
 // JSONOutput formats the log map into Json and then outputs to stderr (appropriate for aws production services)
 func JSONOutput(m Message) {
 	os.Stderr.Write([]byte(m.JSONString() + "\n"))
+}
+
+// ExitOnError will exit if an error is returned
+func ExitOnError(err error) {
+	if nil != err {
+		color.Red("FAILED")
+		Error(err)
+		os.Exit(1)
+	}
+	color.Green("SUCCESS")
 }
