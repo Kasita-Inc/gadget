@@ -18,3 +18,6 @@ pathing:
 
 test: get pathing
 	go test -cover -p 1 ./...
+
+build: get
+	go build ./...

@@ -1,8 +1,8 @@
 hash: 5f8e1605c3f2e7855082b9e6daabd277e7d2f66c86c527c7ee00278d35e5c238
-updated: 2018-11-01T16:59:48.481978-05:00
+updated: 2018-12-14T16:08:14.033154-06:00
 imports:
 - name: github.com/aws/aws-sdk-go
-  version: 870fa4307c5f57c14153c695df7b87af1acdcbf1
+  version: 056aa960bc0fb3918d8b2101e2a9c92675327ea3
   subpackages:
   - aws
   - aws/awserr
@@ -13,6 +13,7 @@ imports:
   - aws/credentials
   - aws/credentials/ec2rolecreds
   - aws/credentials/endpointcreds
+  - aws/credentials/processcreds
   - aws/credentials/stscreds
   - aws/csm
   - aws/defaults
@@ -44,6 +45,8 @@ imports:
   - service/sts
 - name: github.com/docker/go-units
   version: 2fb04c6466a548a03cb009c5569ee1ab1e35398e
+- name: github.com/fatih/color
+  version: 3f9d52f7176a6927daacff70a3e8d1dc2025c53e
 - name: github.com/go-redis/redis
   version: b3d9bf10f6666b2ee5100a6f3f84f4caf3b4e37d
   subpackages:
@@ -55,7 +58,7 @@ imports:
   - internal/singleflight
   - internal/util
 - name: github.com/go-sql-driver/mysql
-  version: d523deb1b23d913de5bdada721a6071e71283618
+  version: 72cd26f257d44c1114970e19afddcd812016007e
 - name: github.com/go-stack/stack
   version: 2fee6af1a9795aafbe0253a0cfbdf668e1fb8a9a
 - name: github.com/golang/protobuf
@@ -67,7 +70,7 @@ imports:
   - ptypes/duration
   - ptypes/timestamp
 - name: github.com/google/uuid
-  version: d460ce9f8df2e77fb1ba55ca87fafed96c607494
+  version: 9b3b1e0f5f99ae461456d768e7d301a7acdaa2d8
 - name: github.com/jmespath/go-jmespath
   version: c2b33e8439af944379acbdd9c3a5fe0bc44bd8a5
 - name: github.com/jmoiron/sqlx
@@ -81,14 +84,22 @@ imports:
   - database/mysql
   - source
   - source/file
+- name: github.com/mattn/go-colorable
+  version: efa589957cd060542a26d2dd7832fd6a6c6c3ade
+- name: github.com/mattn/go-isatty
+  version: 3fb116b820352b7f0c281308a4d6250c22d94e27
 - name: github.com/samalba/dockerclient
   version: a3036261847103270e9f732509f43b5f98710ace
+- name: golang.org/x/sys
+  version: 4d1cda033e0619309c606fc686de3adcf599539e
+  subpackages:
+  - unix
 - name: google.golang.org/appengine
-  version: 4a4468ece617fc8205e99368fa2200e9d1fad421
+  version: a37df1387b4521194676d88c79230c613610d5f4
   subpackages:
   - cloudsql
 - name: gopkg.in/yaml.v2
-  version: 5420a8b6744d3b0345ab293f6fcba19c978f1183
+  version: 51d6538a90f86fe93ac480b35f37b2be17fef232
 testImports:
 - name: github.com/davecgh/go-spew
   version: d8f796af33cc11cb798c1aaeb27a4ebc5099927d
