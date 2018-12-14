@@ -7,11 +7,11 @@ type TaskStack interface {
 	// Size of the stack represented as a count of the elements in the stack.
 	Size() int
 	// Push a new data element onto the stack.
-	Push(data Task)
+	Push(data *internalTask)
 	// Pop the most recently pushed data element off the stack.
-	Pop() (Task, error)
+	Pop() (*internalTask, error)
 	// Peek returns the most recently pushed element without modifying the stack
-	Peek() (Task, error)
+	Peek() (*internalTask, error)
 }
 
 type taskStack struct {
@@ -27,23 +27,23 @@ func (s *taskStack) Size() int {
 	return s.stack.Size()
 }
 
-func (s *taskStack) Push(data Task) {
+func (s *taskStack) Push(data *internalTask) {
 	s.stack.Push(data)
 }
 
-func (s *taskStack) Pop() (Task, error) {
+func (s *taskStack) Pop() (*internalTask, error) {
 	return convert(s.stack.Pop)
 }
 
-func (s *taskStack) Peek() (Task, error) {
+func (s *taskStack) Peek() (*internalTask, error) {
 	return convert(s.stack.Peek)
 }
 
-func convert(call func() (interface{}, error)) (Task, error) {
-	var data Task
+func convert(call func() (interface{}, error)) (*internalTask, error) {
+	var data *internalTask
 	i, err := call()
 	if nil == err {
-		data = i.(Task)
+		data = i.(*internalTask)
 	}
 	return data, err
 }

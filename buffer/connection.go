@@ -106,6 +106,8 @@ const (
 	ErrDisconnectNoDataMessage = "peer disconnected prior to sending data"
 	// ErrHealthCheckMessage is a signal that the remote peer sent no data but did not terminate the connection
 	ErrHealthCheckMessage = "health check errors should be ignored"
+	// ErrCipherAuthenticationFailed is returned when the cipher on hand is not valid for the received message.
+	ErrCipherAuthenticationFailed = "cipher: message authentication failed"
 )
 
 // NewErrDisconnectNoData is a signal that the remote peer terminated the connection and sent no data

@@ -6,13 +6,16 @@ import (
 	"net/http"
 	"time"
 
+	"net/url"
+
 	"github.com/Kasita-Inc/gadget/collection"
 	"github.com/Kasita-Inc/gadget/errors"
 )
 
 // SimpleDoRequest allows for providing a function as a client.
 type SimpleDoRequest struct {
-	DoFunc func(req *http.Request) (*http.Response, error)
+	DoFunc    func(req *http.Request) (*http.Response, error)
+	cookieJar map[string][]*http.Cookie
 }
 
 // Do implements DoHTTPRequest.Do
@@ -26,10 +29,28 @@ func (m *SimpleDoRequest) DoWithContext(ctx context.Context, req *http.Request) 
 	return m.Do(req)
 }
 
+// AddCookieJar to http client to make them available to all future requests
+func (m *SimpleDoRequest) AddCookieJar(jar http.CookieJar) {
+	m.cookieJar = map[string][]*http.Cookie{}
+}
+
+// Cookies lists cookies in the jar
+func (m *SimpleDoRequest) Cookies(url *url.URL) []*http.Cookie {
+	urlStr := url.RawPath
+	return m.cookieJar[urlStr]
+}
+
+// SetCookies adds cookies to the jar
+func (m *SimpleDoRequest) SetCookies(url *url.URL, cookies []*http.Cookie) {
+	urlStr := url.RawPath
+	m.cookieJar[urlStr] = append(m.cookieJar[urlStr], cookies...)
+}
+
 // MockHTTPClient mocks the DoHTTPRequest interface
 type MockHTTPClient struct {
-	DoReturn collection.Stack
-	DoCalled collection.Stack
+	DoReturn  collection.Stack
+	DoCalled  collection.Stack
+	cookieJar map[string][]*http.Cookie
 }
 
 // Do returns the http.Response / error from the DoReturn stack and records the request on the DoCalled stack
@@ -67,6 +88,23 @@ func (client *MockHTTPClient) DoCalledPop() *http.Request {
 		return nil
 	}
 	return top.(*http.Request)
+}
+
+// AddCookieJar to http client to make them available to all future requests
+func (client *MockHTTPClient) AddCookieJar(jar http.CookieJar) {
+	client.cookieJar = map[string][]*http.Cookie{}
+}
+
+// Cookies lists cookies in the jar
+func (client *MockHTTPClient) Cookies(url *url.URL) []*http.Cookie {
+	urlStr := url.RawPath
+	return client.cookieJar[urlStr]
+}
+
+// SetCookies adds cookies to the jar
+func (client *MockHTTPClient) SetCookies(url *url.URL, cookies []*http.Cookie) {
+	urlStr := url.RawPath
+	client.cookieJar[urlStr] = append(client.cookieJar[urlStr], cookies...)
 }
 
 // NewMockHTTPClient returns a mocked version of the DoHTTPRequest interface

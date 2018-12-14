@@ -5,8 +5,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/Kasita-Inc/gadget/log"
 )
 
 type TestTask struct {
@@ -16,7 +14,6 @@ type TestTask struct {
 }
 
 func (task TestTask) Execute() error {
-	log.Infof("Sending task")
 	task.comms <- task.expected
 	var err error
 	if task.doError {
@@ -25,14 +22,14 @@ func (task TestTask) Execute() error {
 	return err
 }
 
-func newTestTask(expected string, doError bool) TestTask {
-	return TestTask{comms: make(chan string, 2), expected: expected, doError: doError}
+func newTestTask(expected string, doError bool) *internalTask {
+	return newInternalTask(TestTask{comms: make(chan string, 2), expected: expected, doError: doError})
 }
 
 func TestAddWorkerForPool(t *testing.T) {
 	assert := assert.New(t)
 	pool := make(chan Worker)
-	complete := make(chan Task, 50)
+	complete := make(chan *internalTask, 50)
 	w := NewWorker(pool, complete)
 	actual, ok := w.(*worker)
 	assert.True(ok)
@@ -44,14 +41,14 @@ func TestWorkerRun(t *testing.T) {
 	// we have one message in this test so we need +1
 	// so we do not block
 	pool := make(chan Worker, 2)
-	complete := make(chan Task, 50)
+	complete := make(chan *internalTask, 50)
 	worker := NewWorker(pool, complete)
 	expected := "foo"
 	task := newTestTask(expected, false)
 	worker.Run()
 	w := <-pool
 	w.Exec(task)
-	actual := <-task.comms
+	actual := <-(task.Task.(TestTask)).comms
 	worker.Quit()
 	assert.Equal(actual, expected)
 }
@@ -61,7 +58,7 @@ func TestWorkerWithErrorMessageContinues(t *testing.T) {
 	// we do not block
 	assert := assert.New(t)
 	pool := make(chan Worker, 3)
-	complete := make(chan Task, 50)
+	complete := make(chan *internalTask, 50)
 	w := NewWorker(pool, complete)
 	expected := "foo"
 	errorTask := newTestTask("I throw errors", true)
@@ -71,8 +68,8 @@ func TestWorkerWithErrorMessageContinues(t *testing.T) {
 	assert.True(ok)
 	actual.tasks <- errorTask
 	actual.tasks <- task
-	<-errorTask.comms
-	comms := <-task.comms
+	<-(errorTask.Task.(TestTask)).comms
+	comms := <-(task.Task.(TestTask)).comms
 	w.Quit()
 	assert.Equal(expected, comms)
 }
@@ -80,7 +77,7 @@ func TestWorkerWithErrorMessageContinues(t *testing.T) {
 func TestWorkerExec(t *testing.T) {
 	assert := assert.New(t)
 	pool := make(chan Worker, 3)
-	complete := make(chan Task, 50)
+	complete := make(chan *internalTask, 50)
 	w := NewWorker(pool, complete)
 	task := newTestTask("expected", false)
 	assert.False(w.Exec(task))

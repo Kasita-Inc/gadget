@@ -25,14 +25,14 @@ func TestDispatchTask(t *testing.T) {
 	expected := generator.String(20)
 	task := newTestTask(expected, false)
 	assert.True(d.Dispatch(task))
-	actual := <-task.comms
+	actual := <-(task.Task.(TestTask)).comms
 	assert.Equal(expected, actual)
 	// calling run again should be fine
 	d.Run()
 	expected = generator.String(20)
 	task = newTestTask(expected, false)
 	assert.True(d.Dispatch(task))
-	actual = <-task.comms
+	actual = <-(task.Task.(TestTask)).comms
 	assert.Equal(expected, actual)
 	d.Quit(false)
 }
@@ -55,7 +55,7 @@ func TestDispatchTasks(t *testing.T) {
 	for _, v := range values {
 		task := newTestTask(v, false)
 		d.Dispatch(task)
-		tasks = append(tasks, task)
+		tasks = append(tasks, (task.Task.(TestTask)))
 	}
 	actual := []string{}
 	for _, task := range tasks {

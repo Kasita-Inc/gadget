@@ -1,6 +1,11 @@
 package dispatcher
 
-import "time"
+import (
+	"time"
+
+	"github.com/Kasita-Inc/gadget/errors"
+	"github.com/Kasita-Inc/gadget/generator"
+)
 
 // Task is the unit of work to be executed by a worker in the pool.
 type Task interface {
@@ -29,4 +34,27 @@ func (rt *retryTask) Execute() error {
 		retry = rt.retry()
 	}
 	return nil
+}
+
+type internalTask struct {
+	ID        string
+	StartTime string
+	Duration  string
+	Error     errors.TracerError
+	Task      Task
+}
+
+func newInternalTask(t Task) *internalTask {
+	return &internalTask{
+		ID:   generator.String(10),
+		Task: t,
+	}
+}
+
+func (it *internalTask) Execute() error {
+	st := time.Now()
+	it.StartTime = st.String()
+	it.Error = errors.Wrap(it.Task.Execute())
+	it.Duration = time.Since(st).String()
+	return it.Error
 }

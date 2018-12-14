@@ -2,6 +2,7 @@ package dispatcher
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -52,9 +53,9 @@ type Dispatcher interface {
 
 type dispatcher struct {
 	// buffered up to the maximum amount of queued messages
-	queue      chan Task
+	queue      chan *internalTask
 	pool       chan Worker
-	complete   chan Task
+	complete   chan *internalTask
 	overflow   TaskStack
 	workers    []Worker
 	exit       chan bool
@@ -70,6 +71,8 @@ type dispatcher struct {
 	mutex                      sync.RWMutex
 	waitBetweenScaleDowns      time.Duration
 	consecutiveScaleDownMisses int
+	etMux                      sync.Mutex
+	executingTasks             map[string]*internalTask
 }
 
 // NewDispatcher to handle asynchronous processing of Tasks with the specified maximum number of workers.
@@ -96,17 +99,33 @@ type dispatcher struct {
 func NewDispatcher(maxBufferedMessage int, minWorkers int, maxWorkers int) Dispatcher {
 	d := &dispatcher{
 		bufferSize: maxBufferedMessage,
-		queue:      make(chan Task, maxBufferedMessage),
-		complete:   make(chan Task, maxBufferedMessage),
+		queue:      make(chan *internalTask, maxBufferedMessage),
+		complete:   make(chan *internalTask, maxBufferedMessage),
 		// don't set min below 0
 		minWorkers:                 intutil.Maxv(0, minWorkers),
 		overflow:                   NewTaskStack(),
 		waitBetweenScaleDowns:      DefaultWaitBetweenScaleDowns,
 		consecutiveScaleDownMisses: DefaultDispatchMissesBeforeDraining,
+		executingTasks:             make(map[string]*internalTask),
 	}
 	// don't set max below min
 	d.maxWorkers = intutil.Maxv(d.minWorkers, maxWorkers)
 	return d
+}
+
+func (d *dispatcher) overflowPush(t *internalTask) {
+	d.overflow.Push(t)
+	if d.overflow.Size()%20 == 0 {
+		d.etMux.Lock()
+		ets := make([]string, len(d.executingTasks))
+		i := 0
+		for _, task := range d.executingTasks {
+			ets[i] = fmt.Sprintf("%#v", task)
+			i++
+		}
+		log.Errorf("Overflow activity at threshold, current tasks:\n%s", strings.Join(ets, "\n"))
+		d.etMux.Unlock()
+	}
 }
 
 func (d *dispatcher) Status() Status {
@@ -172,15 +191,15 @@ func (d *dispatcher) Dispatch(task Task) bool {
 	if d.Status() == Draining {
 		log.Error(fmt.Errorf("task added to dispatcher while draining: %+v", task))
 	}
-	return d.enqueue(task, false)
+	return d.enqueue(newInternalTask(task), false)
 }
 
-func (d *dispatcher) enqueue(task Task, suppressWarning bool) bool {
+func (d *dispatcher) enqueue(task *internalTask, suppressWarning bool) bool {
 	select {
 	case d.queue <- task:
 		return true
 	default:
-		d.overflow.Push(task)
+		d.overflowPush(task)
 		if !suppressWarning {
 			log.Warnf("task added to dispatcher with a full queue, overflow is at %d ", d.overflow.Size())
 		}
@@ -245,7 +264,10 @@ func (d *dispatcher) run() {
 			}
 			// we want this to keep catching
 			sendNonBlocking(true, d.drain)
-		case <-d.complete:
+		case task := <-d.complete:
+			d.etMux.Lock()
+			delete(d.executingTasks, task.ID)
+			d.etMux.Unlock()
 			consecutiveMisses = 0
 			if d.overflow.Size() > 0 && !d.loadOverflow() {
 				log.Infof("dispatcher overflow queue at %d messages after load", d.overflow.Size())
@@ -265,17 +287,20 @@ func (d *dispatcher) run() {
 	}
 }
 
-func (d *dispatcher) dispatch(t Task) {
+func (d *dispatcher) dispatch(t *internalTask) {
 	select {
 	// wait for a worker to become available
 	case w := <-d.pool:
 		// this should only return false when we somehow got a worker that
 		// is not accepting requests
 		// success = w.Exec(t)
+		d.etMux.Lock()
+		d.executingTasks[t.ID] = t
+		d.etMux.Unlock()
 		if !w.Exec(t) {
 			// put it in overflow for now
 			log.Warnf("worker exec failed, pushing task to overflow (%d tasks)", d.overflow.Size())
-			d.overflow.Push(t)
+			d.overflowPush(t)
 		}
 	case <-d.exit:
 		// add another true onto the channel so callers above us get the message
@@ -289,7 +314,8 @@ func (d *dispatcher) dispatch(t Task) {
 			d.Resize(2*len(d.workers), true)
 		}
 		// but either way push to overflow and try later
-		d.overflow.Push(t)
+		d.overflowPush(t)
+
 	}
 }
 

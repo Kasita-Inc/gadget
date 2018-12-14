@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/Kasita-Inc/gadget/errors"
@@ -65,6 +66,12 @@ type DoHTTPRequest interface {
 	// DoWithContext the request by sending the payload to the remote server and returning the response and any errors
 	// cancelling the request at the transport level when the context returns on it's 'Done' channel.
 	DoWithContext(context.Context, *http.Request) (*http.Response, errors.TracerError)
+	// AddCookieJar to http client to make cookies available to future requests
+	AddCookieJar(http.CookieJar)
+	// Cookies lists cookies in the jar
+	Cookies(url *url.URL) []*http.Cookie
+	// SetCookies adds cookies to the jar
+	SetCookies(url *url.URL, cookies []*http.Cookie)
 }
 
 // NewHTTPRedirectClient is the default net/http client with headers being set on redirect
@@ -98,6 +105,7 @@ type httpRedirectClient struct {
 	transport *http.Transport
 }
 
+// Do the request by sending the payload to the remote server and returning the response and any errors
 func (client *httpRedirectClient) Do(req *http.Request) (*http.Response, errors.TracerError) {
 	log.Debugf("sending request to %s", req.URL.String())
 	now := time.Now()
@@ -109,6 +117,8 @@ func (client *httpRedirectClient) Do(req *http.Request) (*http.Response, errors.
 	return resp, errors.Wrap(err)
 }
 
+// DoWithContext the request by sending the payload to the remote server and returning the response and any errors
+// cancelling the request at the transport level when the context returns on it's 'Done' channel.
 func (client *httpRedirectClient) DoWithContext(ctx context.Context, req *http.Request) (*http.Response, errors.TracerError) {
 	complete := make(chan bool, 1)
 	var response *http.Response
@@ -125,4 +135,19 @@ func (client *httpRedirectClient) DoWithContext(ctx context.Context, req *http.R
 		break
 	}
 	return response, errors.Wrap(err)
+}
+
+// AddCookieJar to http client to make them available to all future requests
+func (client *httpRedirectClient) AddCookieJar(jar http.CookieJar) {
+	client.client.Jar = jar
+}
+
+// Cookies lists cookies in the jar
+func (client *httpRedirectClient) Cookies(url *url.URL) []*http.Cookie {
+	return client.client.Jar.Cookies(url)
+}
+
+// SetCookies adds cookies to the jar
+func (client *httpRedirectClient) SetCookies(url *url.URL, cookies []*http.Cookie) {
+	client.client.Jar.SetCookies(url, cookies)
 }
